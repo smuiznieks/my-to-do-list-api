@@ -6,10 +6,11 @@ import cors from "cors";
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 // Port must be unique!
 // Must update before deploying because localhost:3001 is for local use only
-console.log(process.env.port)
+// console.log(process.env.port)
 const port = process.env.port || 3001;
 
 // Use JSON file for storage
@@ -39,23 +40,62 @@ console.log(db.data);
 //   res.json({ test: true });
 // });
 
-app.get("/data", (req, res) => {
+function selgaMiddleware(req, res, next) {
+  console.log('I AM MIDDLEWARE!!!');
+  next();
+}
 
+function anotherOne(req, res, next) {
+  console.log(req.params);
+  next();
+}
+
+// GET
+app.get("/tasks", selgaMiddleware, (req, res) => {
+  res.json(db.data.tasks);
 });
 
 // CREATE --- typically app.post
-app.get('/create', (req, res) => {
-
-});
+// app.get('/create', (req, res) => {
+//   db.data.tasks.push({
+//     id: uuidv4(),
+//     userId: 101,
+//     description: 'Learn more about cloud computing',
+//     isComplete: false
+//   });
+//   db.write();
+//   res.send('Task created!');
+// });
+app.post('/create', (req, res) => {
+  console.log(req.body);
+    db.data.tasks.push({
+      id: uuidv4(),
+      userId: req.body.userId,
+      description: req.body.description,
+      isComplete: false
+    });
+    db.write();
+  res.send("Task Created!");
+})
 
 // DELETE --- typically app.delete
 app.get('/delete/:id', (req, res) => {
- 
+  // console.log(req.params.id);
+  db.data.tasks = db.data.tasks.filter((task) => task.id !== req.params.id);
+  db.write();
+  res.send('Task deleted');
 });
 
 // UPDATE --- typically app.put
-app.get('/update/:id/:state', (req, res) => {
-  
+app.get('/update/:id/:description', selgaMiddleware, anotherOne, (req, res) => {
+  console.log(req.params);
+  // let updatedTask = db.data.tasks.filter((task) => task.id === req.params.id);
+  let updatedTask = db.data.tasks.find((task) => task.id === req.params.id);
+  console.log(updatedTask);
+  // updatedTask[0].description = req.params.description;
+  updatedTask.description = req.params.description;
+  db.write();
+  res.send('Task updated!');
 });
 
 app.listen(port, () => {
