@@ -3,10 +3,33 @@ import { Low, JSONFile } from "lowdb";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import cors from "cors";
+import jwt from "jsonwebtoken";
+const accessTokenSecret = "somerandomaccesstoken";
+
+const authenticateJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  console.log(`Headers: ${JSON.stringify(req.headers)}`);
+  console.log(`Body: ${JSON.stringify(req.body)}`);
+  if (authHeader) {
+    const token = authHeader.split(" ")[1];
+
+    jwt.verify(token, accessTokenSecret, (err, user) => {
+      if (err) {
+        return res.sendStatus(403);
+      }
+
+      req.user = user;
+      next();
+    });
+  } else {
+    res.sendStatus(401);
+  }
+};
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(authenticateJWT);
 
 // Port must be unique!
 // Must update before deploying because localhost:3001 is for local use only
@@ -67,14 +90,20 @@ app.get("/tasks", selgaMiddleware, (req, res) => {
 //   res.send('Task created!');
 // });
 app.post('/create', (req, res) => {
-  console.log(req.body);
-    db.data.tasks.push({
-      id: uuidv4(),
-      userId: req.body.userId,
-      description: req.body.description,
-      isComplete: false
-    });
-    db.write();
+  const { role } = req.user;
+  console.log(role);
+  // console.log(req.body);
+  // if (role != 'admin') {
+  //   return res.sendStatus(403);
+  // }
+
+  db.data.tasks.push({
+    id: uuidv4(),
+    userId: req.body.userId,
+    description: req.body.description,
+    isComplete: false
+  });
+  db.write();
   res.send("Task Created!");
 })
 
